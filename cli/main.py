@@ -9,9 +9,6 @@ import random
 import sys
 import threading
 import time
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-
 from src.linkedinquery.config import DATA_DIR, LOCK_FILE, Signal, load_all, load_logging_config, load_user_signals
 from src.linkedinquery.database import cleanup_old_jobs, get_db, insert_new_jobs, log_run, mark_notified
 from src.linkedinquery.models import SearchQuery
@@ -20,10 +17,6 @@ from src.linkedinquery.scraper import scrape_jobs
 
 # Only one signal can hit LinkedIn at a time (avoids IP detection)
 scrape_lock = threading.Lock()
-
-MELB_TZ = ZoneInfo("Australia/Melbourne")
-ACTIVE_HOURS = (7, 21)
-
 
 def setup_logging():
     log_cfg = load_logging_config()
@@ -74,19 +67,6 @@ def run_signal(signal: Signal):
 
 # --- Daemon ---
 
-def _seconds_until_active() -> int:
-    now = datetime.now(MELB_TZ)
-    hour = now.hour
-    if ACTIVE_HOURS[0] <= hour < ACTIVE_HOURS[1]:
-        return 0
-    if hour >= ACTIVE_HOURS[1]:
-        next_start = now.replace(hour=ACTIVE_HOURS[0], minute=0, second=0, microsecond=0)
-        next_start += timedelta(days=1)
-    else:
-        next_start = now.replace(hour=ACTIVE_HOURS[0], minute=0, second=0, microsecond=0)
-    return int((next_start - now).total_seconds())
-
-
 def _signal_loop(signal: Signal):
     """Independent loop for one signal in its own thread."""
     logger = logging.getLogger(f"signal.{signal.full_name}")
@@ -97,11 +77,6 @@ def _signal_loop(signal: Signal):
     time.sleep(stagger)
 
     while True:
-        wait_secs = _seconds_until_active()
-        if wait_secs > 0:
-            logger.info(f"Outside active hours. Sleeping {wait_secs // 3600}h {(wait_secs % 3600) // 60}m")
-            time.sleep(wait_secs)
-
         run_signal(signal)
 
         wait = random.uniform(signal.interval_min, signal.interval_max)
@@ -111,7 +86,7 @@ def _signal_loop(signal: Signal):
 
 def run_daemon(signals: list[Signal]):
     logger = logging.getLogger("main")
-    logger.info(f"Daemon starting with {len(signals)} signal(s), active {ACTIVE_HOURS[0]}am-{ACTIVE_HOURS[1] - 12}pm Melbourne")
+    logger.info(f"Daemon starting with {len(signals)} signal(s)")
 
     for signal in signals:
         t = threading.Thread(target=_signal_loop, args=(signal,), name=signal.full_name, daemon=True)

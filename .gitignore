@@ -5,6 +5,9 @@ data/
 config/config.yaml
 config/users/
 
+# Local docs
+README.local.md
+
 # Python
 __pycache__/
 *.pyc
