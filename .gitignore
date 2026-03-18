@@ -1,0 +1,11 @@
+# Runtime data
+data/
+
+# Config with secrets
+config/config.yaml
+config/users/
+
+# Python
+__pycache__/
+*.pyc
+.env
