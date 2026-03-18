@@ -1,4 +1,5 @@
 import logging
+import time
 from html import escape
 
 import requests
@@ -46,14 +47,23 @@ def _send_message(bot_token: str, chat_id: str, text: str) -> bool:
             "parse_mode": "HTML",
             "disable_web_page_preview": True,
         }
-        try:
-            resp = requests.post(url, json=payload, timeout=10)
-            if resp.status_code != 200:
+        for attempt in range(3):
+            try:
+                resp = requests.post(url, json=payload, timeout=30)
+                if resp.status_code == 200:
+                    break
                 logger.error(f"Telegram API error: {resp.status_code} — {resp.text}")
-                return False
-        except requests.RequestException as e:
-            logger.error(f"Failed to send Telegram message: {e}")
-            return False
+                if attempt < 2:
+                    time.sleep(3)
+                else:
+                    return False
+            except requests.RequestException as e:
+                logger.warning(f"Telegram attempt {attempt + 1}/3 failed: {e}")
+                if attempt < 2:
+                    time.sleep(3)
+                else:
+                    logger.error(f"Failed to send Telegram message after 3 attempts")
+                    return False
 
     return True
 

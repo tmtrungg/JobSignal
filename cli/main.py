@@ -71,11 +71,6 @@ def _signal_loop(signal: Signal):
     """Independent loop for one signal in its own thread."""
     logger = logging.getLogger(f"signal.{signal.full_name}")
 
-    # Stagger: random initial delay so signals don't all fire at once
-    stagger = random.uniform(0, 120)
-    logger.info(f"Starting in {stagger:.0f}s (stagger)")
-    time.sleep(stagger)
-
     while True:
         run_signal(signal)
 
